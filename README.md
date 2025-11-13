@@ -2,4 +2,3 @@
 
 artem down
 pavlo krasavckik
-qbhg hbqvdj bhvbvhqcbsv usc vw bu
