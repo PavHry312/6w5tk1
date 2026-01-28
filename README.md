@@ -1,11 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
 
-namespace FizycznyWisielec
-{
-    // Клас, що описує один термін для гри
-    // Це показує викладачу, що ти розумієш об'єктно-орієнтоване програмування (OOP)
+    namespace FizycznyWisielec
+    {
+
     class TerminFizyczny
     {
         public string Slowo { get; set; }      // Саме слово
