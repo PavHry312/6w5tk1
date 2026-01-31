@@ -1,190 +1,133 @@
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 
-    namespace FizycznyWisielec
+class Program
+{
+    static int width = 40;
+    static int height = 20;
+
+    static int x = width / 2;
+    static int y = height / 2;
+
+    static int foodX;
+    static int foodY;
+
+    static int score = 0;
+    static string direction = "RIGHT";
+
+    static List<(int, int)> snake = new List<(int, int)>();
+
+    static void Main()
     {
+        Console.CursorVisible = false;
+        Console.SetWindowSize(width + 2, height + 4);
 
-    class TerminFizyczny
-    {
-        public string Slowo { get; set; }      // Саме слово
-        public string Kategoria { get; set; }  // Категорія (Механіка, Астрономія...)
-        public string Opis { get; set; }       // Наукове визначення (підказка)
+        snake.Add((x, y));
+        GenerateFood();
 
-        public TerminFizyczny(string slowo, string kategoria, string opis)
+        while (true)
         {
-            Slowo = slowo.ToUpper();
-            Kategoria = kategoria;
-            Opis = opis;
+            if (Console.KeyAvailable)
+            {
+                ConsoleKey key = Console.ReadKey(true).Key;
+                ChangeDirection(key);
+            }
+
+            Move();
+            Draw();
+            Thread.Sleep(180); // ⏳ повільніше
         }
     }
 
-    class Program
+    static void ChangeDirection(ConsoleKey key)
     {
-        // База даних слів
-        static List<TerminFizyczny> bazaTerminow = new List<TerminFizyczny>();
+        if (key == ConsoleKey.LeftArrow && direction != "RIGHT") direction = "LEFT";
+        if (key == ConsoleKey.RightArrow && direction != "LEFT") direction = "RIGHT";
+        if (key == ConsoleKey.UpArrow && direction != "DOWN") direction = "UP";
+        if (key == ConsoleKey.DownArrow && direction != "UP") direction = "DOWN";
+    }
 
-        static void Main(string[] args)
+    static void Move()
+    {
+        switch (direction)
         {
-            InicjalizujBazeDanych(); // Завантажуємо слова
-            bool czyGracDalej = true;
-
-            while (czyGracDalej)
-            {
-                Console.Clear();
-                Console.WriteLine("=============================================");
-                Console.WriteLine("   FIZYCZNY WISIELEC (PHYSICS HANGMAN) v2.0  ");
-                Console.WriteLine("=============================================");
-                Console.WriteLine("Wybierz kategorię:");
-                Console.WriteLine("1. Mechanika (Mechanika)");
-                Console.WriteLine("2. Astronomia (Astronomia)");
-                Console.WriteLine("3. Matematyka (Matematyka)");
-                Console.WriteLine("0. Wyjście (Вихід)");
-                Console.Write("\nTwój wybór: ");
-
-                string wybor = Console.ReadLine();
-
-                if (wybor == "0")
-                {
-                    czyGracDalej = false;
-                }
-                else if (wybor == "1" || wybor == "2" || wybor == "3")
-                {
-                    RozpocznijGre(wybor);
-                }
-                else
-                {
-                    Console.WriteLine("Niepoprawny wybór. Naciśnij Enter...");
-                    Console.ReadLine();
-                }
-            }
+            case "LEFT": x--; break;
+            case "RIGHT": x++; break;
+            case "UP": y--; break;
+            case "DOWN": y++; break;
         }
 
-        // Головна логіка гри
-        static void RozpocznijGre(string kategoriaId)
+        // 🧱 зіткнення з рамкою
+        if (x <= 0 || x >= width - 1 || y <= 0 || y >= height - 1)
+            GameOver();
+
+        snake.Insert(0, (x, y));
+
+        if (x == foodX && y == foodY)
         {
-            // Вибір категорії
-            string nazwaKategorii = "";
-            if (kategoriaId == "1") nazwaKategorii = "Mechanika";
-            if (kategoriaId == "2") nazwaKategorii = "Astronomia";
-            if (kategoriaId == "3") nazwaKategorii = "Matematyka";
+            score++;
+            GenerateFood();
+        }
+        else
+        {
+            snake.RemoveAt(snake.Count - 1);
+        }
+    }
 
-            // Фільтруємо слова за категорією (використання списків)
-            var dostepneSlowa = bazaTerminow.Where(t => t.Kategoria == nazwaKategorii).ToList();
-            
-            // Випадковий вибір слова
-            Random rnd = new Random();
-            TerminFizyczny wybranyTermin = dostepneSlowa[rnd.Next(dostepneSlowa.Count)];
+    static void Draw()
+    {
+        Console.Clear();
 
-            char[] odgadniete = new char[wybranyTermin.Slowo.Length];
-            for (int i = 0; i < odgadniete.Length; i++) odgadniete[i] = '_';
+        DrawBorder();
 
-            int zycia = 6;
-            int punkty = 100;
-            bool czyWygrana = false;
-            List<char> uzyteLitery = new List<char>();
+        // 🍎 їжа
+        Console.SetCursorPosition(foodX, foodY);
+        Console.Write("●");
 
-            while (zycia > 0 && !czyWygrana)
-            {
-                Console.Clear();
-                Console.WriteLine($"Kategoria: {nazwaKategorii} | Punkty: {punkty} | Życia: {zycia}");
-                Console.WriteLine("---------------------------------------------");
-                Console.WriteLine($"HASŁO: {string.Join(" ", odgadniete)}");
-                Console.WriteLine($"Użyte litery: {string.Join(", ", uzyteLitery)}");
-                Console.WriteLine("\n[Wpisz literę] LUB [wpisz 'POMOC' aby uzyskać definicję (-20 pkt)]");
-                Console.Write("> ");
-
-                string input = Console.ReadLine().ToUpper();
-
-                // Логіка підказки (Hint)
-                if (input == "POMOC")
-                {
-                    Console.WriteLine($"\nPODPOWIEDŹ: {wybranyTermin.Opis}");
-                    punkty -= 20;
-                    if (punkty < 0) punkty = 0;
-                    Console.WriteLine("Naciśnij Enter, aby grać dalej...");
-                    Console.ReadLine();
-                    continue;
-                }
-
-                // Перевірка введення (чи це одна літера)
-                if (input.Length != 1 || !char.IsLetter(input[0]))
-                {
-                    continue; 
-                }
-
-                char litera = input[0];
-
-                if (uzyteLitery.Contains(litera))
-                {
-                    Console.WriteLine("Już użyłeś tej litery! Enter...");
-                    Console.ReadLine();
-                    continue;
-                }
-
-                uzyteLitery.Add(litera);
-
-                if (wybranyTermin.Slowo.Contains(litera))
-                {
-                    // Відгадав літеру
-                    for (int i = 0; i < wybranyTermin.Slowo.Length; i++)
-                    {
-                        if (wybranyTermin.Slowo[i] == litera)
-                        {
-                            odgadniete[i] = litera;
-                        }
-                    }
-                }
-                else
-                {
-                    // Не відгадав
-                    zycia--;
-                    punkty -= 10;
-                    if (punkty < 0) punkty = 0;
-                    Console.WriteLine($"Nie ma litery {litera}!");
-                }
-
-                // Перевірка перемоги
-                if (!new string(odgadniete).Contains('_'))
-                {
-                    czyWygrana = true;
-                }
-            }
-
-            // Кінець гри
-            Console.Clear();
-            if (czyWygrana)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"GRATULACJE! Odgadłeś hasło: {wybranyTermin.Slowo}");
-                Console.WriteLine($"Twój wynik końcowy: {punkty} pkt");
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("KONIEC GRY. Przegrałeś.");
-                Console.WriteLine($"Prawidłowe hasło to: {wybranyTermin.Slowo}");
-                Console.WriteLine($"Definicja: {wybranyTermin.Opis}");
-            }
-            Console.ResetColor();
-            Console.WriteLine("\nNaciśnij Enter, aby wrócić do menu...");
-            Console.ReadLine();
+        // 🐍 змійка
+        foreach (var part in snake)
+        {
+            Console.SetCursorPosition(part.Item1, part.Item2);
+            Console.Write("■");
         }
 
-        // Тут ми наповнюємо нашу "базу" термінами
-        static void InicjalizujBazeDanych()
+        Console.SetCursorPosition(0, height + 2);
+        Console.Write("Score: " + score);
+    }
+
+    static void DrawBorder()
+    {
+        for (int i = 0; i < width; i++)
         {
-            bazaTerminow.Add(new TerminFizyczny("PRZYSPIESZENIE", "Mechanika", "Wektorowa wielkość fizyczna wyrażająca zmianę prędkości w czasie."));
-            bazaTerminow.Add(new TerminFizyczny("BEZWŁADNOŚĆ", "Mechanika", "Właściwość materii polegająca na zachowaniu stanu spoczynku lub ruchu jednostajnego."));
-            bazaTerminow.Add(new TerminFizyczny("TARCIE", "Mechanika", "Siła oporu ruchu występująca na styku dwóch powierzchni."));
-            
-            bazaTerminow.Add(new TerminFizyczny("KWAZAR", "Astronomia", "Bardzo jasny obiekt gwiazdopodobny, będący aktywnym jądrem galaktyki."));
-            bazaTerminow.Add(new TerminFizyczny("EKLIPTYKA", "Astronomia", "Wielkie koło na sferze niebieskiej, po którym pozornie porusza się Słońce."));
-            bazaTerminow.Add(new TerminFizyczny("CZARNA DZIURA", "Astronomia", "Obszar czasoprzestrzeni, z którego nic, nawet światło, nie może uciec."));
-            
-            bazaTerminow.Add(new TerminFizyczny("CAŁKA", "Matematyka", "Ogólne określenie wielu różnych, choć powiązanych ze sobą pojęć analizy matematycznej."));
-            bazaTerminow.Add(new TerminFizyczny("MACIERZ", "Matematyka", "Układ liczb, symboli lub wyrażeń zapisanych w postaci prostokątnej tablicy."));
-            bazaTerminow.Add(new TerminFizyczny("GRANICA", "Matematyka", "Podstawowe pojęcie analizy matematycznej opisujące zachowanie funkcji w pobliżu danego punktu."));
+            Console.SetCursorPosition(i, 0);
+            Console.Write("#");
+            Console.SetCursorPosition(i, height - 1);
+            Console.Write("#");
         }
+
+        for (int i = 0; i < height; i++)
+        {
+            Console.SetCursorPosition(0, i);
+            Console.Write("#");
+            Console.SetCursorPosition(width - 1, i);
+            Console.Write("#");
+        }
+    }
+
+    static void GenerateFood()
+    {
+        Random rand = new Random();
+        foodX = rand.Next(1, width - 2);
+        foodY = rand.Next(1, height - 2);
+    }
+
+    static void GameOver()
+    {
+        Console.Clear();
+        Console.WriteLine("GAME OVER");
+        Console.WriteLine("Score: " + score);
+        Console.ReadKey();
+        Environment.Exit(0);
     }
 }
